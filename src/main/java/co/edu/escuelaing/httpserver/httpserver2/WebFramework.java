@@ -12,9 +12,21 @@ public class WebFramework {
         StaticFileService.setLocation(path);
     }
 
-    // por ahora el puerto es fijo, en el punto de las env vars lo leo de PORT
+    // el puerto sale de la variable PORT, si no existe uso 8080
     public static void start() throws IOException {
-        start(8080);
+        start(readPort());
+    }
+
+    private static int readPort() {
+        String portValue = System.getenv("PORT");
+        if (portValue == null || portValue.isBlank()) {
+            return 8080;
+        }
+        try {
+            return Integer.parseInt(portValue.trim());
+        } catch (NumberFormatException e) {
+            throw new IllegalArgumentException("PORT no es un numero valido: " + portValue);
+        }
     }
 
     public static void start(int port) throws IOException {

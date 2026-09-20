@@ -6,6 +6,12 @@ public class Application {
 
     public static void main(String[] args) throws Exception {
 
+        // configuracion que viene de variables de entorno
+        String greetingPrefix = System.getenv().getOrDefault("GREETING_PREFIX", "Hello");
+        String appEnv = System.getenv().getOrDefault("APP_ENV", "development");
+
+        System.out.println("APP_ENV=" + appEnv);
+
         staticfiles("/webroot");
 
         get("/hello", (req, resp) -> {
@@ -13,12 +19,19 @@ public class Application {
             if (name == null || name.isBlank()) {
                 name = "world";
             }
-            return "Hello " + name;
+            // en texto plano para que el navegador no interprete el nombre como html
+            resp.setContentType("text/plain; charset=utf-8");
+            return greetingPrefix + " " + name;
         });
 
         get("/pi", (req, resp) -> String.valueOf(Math.PI));
 
-        // el puerto por argumento es solo para probar mientras el 8080 esta ocupado
-        start(args.length > 0 ? Integer.parseInt(args[0]) : 8080);
+        // sirve para mostrar en el README que las variables se leyeron
+        get("/config", (req, resp) -> {
+            resp.setContentType("text/plain; charset=utf-8");
+            return "APP_ENV=" + appEnv + "\nGREETING_PREFIX=" + greetingPrefix;
+        });
+
+        start();
     }
 }
