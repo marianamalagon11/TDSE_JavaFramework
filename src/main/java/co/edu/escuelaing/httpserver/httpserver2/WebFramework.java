@@ -8,6 +8,10 @@ public class WebFramework {
         Router.register(route, ws);
     }
 
+    public static void staticfiles(String path) {
+        StaticFileService.setLocation(path);
+    }
+
     // por ahora el puerto es fijo, en el punto de las env vars lo leo de PORT
     public static void start() throws IOException {
         start(8080);

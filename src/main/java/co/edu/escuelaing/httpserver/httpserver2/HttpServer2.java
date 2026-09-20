@@ -90,7 +90,13 @@ public class HttpServer2 {
             return;
         }
 
-        // aca despues va el archivo estatico
+        // si no es ruta dinamica pruebo con un archivo estatico
+        StaticFileService.StaticFile file = StaticFileService.load(request.getPath());
+        if (file != null) {
+            sendResponse(out, 200, file.contentType(), file.content());
+            return;
+        }
+
         sendResponse(out, 404, TEXT, "404 Not Found");
     }
 
@@ -128,6 +134,11 @@ public class HttpServer2 {
 
     private static void sendResponse(OutputStream out, int status, String contentType, String body)
             throws IOException {
+        sendResponse(out, status, contentType, body.getBytes(StandardCharsets.UTF_8));
+    }
+
+    private static void sendResponse(OutputStream out, int status, String contentType, byte[] body)
+            throws IOException {
         String statusText = switch (status) {
             case 200 -> "OK";
             case 400 -> "Bad Request";
@@ -137,16 +148,14 @@ public class HttpServer2 {
         };
 
         // Content-Length va en bytes, no en caracteres
-        byte[] bodyBytes = body.getBytes(StandardCharsets.UTF_8);
-
         String headers = "HTTP/1.1 " + status + " " + statusText + "\r\n"
                 + "Content-Type: " + contentType + "\r\n"
-                + "Content-Length: " + bodyBytes.length + "\r\n"
+                + "Content-Length: " + body.length + "\r\n"
                 + "Connection: close\r\n"
                 + "\r\n";
 
         out.write(headers.getBytes(StandardCharsets.UTF_8));
-        out.write(bodyBytes);
+        out.write(body);
         out.flush();
     }
 }

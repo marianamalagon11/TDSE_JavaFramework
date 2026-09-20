@@ -6,6 +6,8 @@ public class Application {
 
     public static void main(String[] args) throws Exception {
 
+        staticfiles("/webroot");
+
         get("/hello", (req, resp) -> {
             String name = req.getValue("name");
             if (name == null || name.isBlank()) {
