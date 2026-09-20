@@ -26,9 +26,11 @@ public class HttpServer2 {
 
             while (running) {
                 try (Socket clientSocket = serverSocket.accept()) {
+                    // si el cliente se queda callado no me quedo esperando para siempre
+                    clientSocket.setSoTimeout(5000);
                     handleRequest(clientSocket);
-                } catch (IOException e) {
-                    // si falla una conexion no quiero que se caiga todo el servidor
+                } catch (Exception e) {
+                    // cualquier error de una peticion no debe tumbar el servidor
                     System.err.println("Error atendiendo una conexion: " + e.getMessage());
                 }
             }
@@ -59,7 +61,7 @@ public class HttpServer2 {
         System.out.println("Peticion recibida: " + requestLine);
 
         String[] parts = requestLine.split(" ");
-        if (parts.length < 3) {
+        if (parts.length != 3 || !parts[1].startsWith("/") || !parts[2].startsWith("HTTP/")) {
             sendResponse(out, 400, TEXT, "400 Bad Request");
             return;
         }
@@ -72,7 +74,14 @@ public class HttpServer2 {
             return;
         }
 
-        Request request = parseRequestTarget(fullPath);
+        Request request;
+        try {
+            request = parseRequestTarget(fullPath);
+        } catch (IllegalArgumentException e) {
+            // por ejemplo un %zz que no se puede decodificar
+            sendResponse(out, 400, TEXT, "400 Bad Request: parametros mal codificados");
+            return;
+        }
         Response response = new Response();
 
         // primero busco una ruta dinamica registrada
