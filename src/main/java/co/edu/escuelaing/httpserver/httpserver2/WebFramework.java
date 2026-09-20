@@ -1,29 +1,23 @@
-/*
- * Click nbfs://nbhost/SystemFileSystem/Templates/Licenses/license-default.txt to change this license
- * Click nbfs://nbhost/SystemFileSystem/Templates/Classes/Class.java to edit this template
- */
 package co.edu.escuelaing.httpserver.httpserver2;
 
-import java.util.HashMap;
-import java.util.Map;
+import java.io.IOException;
 
-/**
- *
- * @author maria
- */
 public class WebFramework {
 
-    static Map<String, WebService> webServices = new HashMap<>();
-    
-    public static void get(String route, WebService ws){
-        webServices.put(route,ws);
+    public static void get(String route, WebService ws) {
+        Router.register(route, ws);
     }
 
-    public static void invoke(String route){
-        WebService ws = webServices.get(route);
-        ws.call();
+    // por ahora el puerto es fijo, en el punto de las env vars lo leo de PORT
+    public static void start() throws IOException {
+        start(8080);
     }
-    
-    public static void start(){}
-    
+
+    public static void start(int port) throws IOException {
+        HttpServer2.start(port);
+    }
+
+    public static void stop() {
+        HttpServer2.stop();
+    }
 }
