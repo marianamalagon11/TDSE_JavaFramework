@@ -2,7 +2,7 @@
 
 Servidor HTTP secuencial escrito en Java, sin librerías externas, que evoluciona el servidor de la primera parte del laboratorio ([TDSE_HttpServer](https://github.com/marianamalagon11/TDSE_HttpServer)) hacia un pequeño framework web. El desarrollador registra servicios GET con funciones lambda, sin tocar el ciclo de conexión del servidor, y la configuración del despliegue sale de variables de entorno.
 
-> Estado del README: completo hasta el apagado gradual (punto 7). Las secciones marcadas como **PENDIENTE** dependen de la aplicación de ejemplo final y del despliegue en la nube.
+> Estado del README: completo hasta la aplicación de ejemplo (punto 8). Las secciones marcadas como **PENDIENTE** dependen del despliegue en la nube.
 
 ## Qué hace
 
@@ -224,7 +224,30 @@ Cualquier error dentro de una petición se registra en consola y el servidor sig
 
 ## Aplicación de ejemplo
 
-**PENDIENTE (punto 8):** página con HTML, CSS, JavaScript e imágenes, y una llamada asíncrona con `fetch()` a los servicios REST. Aquí irá la descripción final y su captura.
+Una página pequeña en `src/main/resources/webroot` que consume los servicios del framework desde el navegador. Se sirve como archivos estáticos y no tiene lógica de servidor propia.
+
+| Recurso | Archivo | Papel |
+|---|---|---|
+| Página HTML | `index.html` | Tres secciones con un botón cada una |
+| Hoja de estilos | `styles.css` | Presentación de la página |
+| JavaScript | `app.js` | Llama a los servicios con `fetch()` y muestra el resultado o el error |
+| Imágenes | `images/logoU.png`, `images/fotoU.jpeg` | Recursos binarios estáticos |
+
+Cada botón hace una llamada asíncrona con `fetch()` a una lambda distinta:
+
+| Botón | Petición | Lambda que responde |
+|---|---|---|
+| Pedir saludo | `GET /hello?name=<nombre>` | Saludo con el prefijo de `GREETING_PREFIX` |
+| Pedir pi | `GET /pi` | Valor de `Math.PI` |
+| Ver configuración | `GET /config` | Valores de `APP_ENV` y `GREETING_PREFIX` |
+
+La llamada del saludo, en `app.js`, codifica el nombre antes de enviarlo y no recarga la página:
+
+```javascript
+const mensaje = await pedirServicio("/hello?name=" + encodeURIComponent(nombre));
+```
+
+La función `pedirServicio` usa `fetch()`, distingue entre falla de red, respuesta HTTP de error y respuesta correcta, y bloquea los botones mientras espera. Las capturas están en la sección de evidencias.
 
 ## Despliegue en la nube
 
@@ -255,6 +278,28 @@ Respuesta 404 para `/unknown` y respuesta de `/shutdown` en desarrollo:
 
 ![404 y shutdown](src/main/resources/webroot/images/pruebasLocal2.png)
 
+### Local: aplicación de ejemplo en el navegador
+
+Cada botón llama con `fetch()` a un servicio distinto. El saludo usa `GREETING_PREFIX=Hola`:
+
+![Botón Pedir saludo](src/main/resources/webroot/images/pruebaLocalSaludo.png)
+
+![Botón Pedir pi](src/main/resources/webroot/images/pruebaLocalPi.png)
+
+![Botón Ver configuración](src/main/resources/webroot/images/pruebaLocalConfig.png)
+
+### Local: `/shutdown` no existe en producción
+
+Con `APP_ENV=production` la ruta no se registra: responde 404 y el servidor sigue atendiendo, como muestra el `/pi` posterior:
+
+![Shutdown en producción](src/main/resources/webroot/images/produccionLocal.png)
+
+### Local: compilación con Maven
+
+`mvn clean package` termina con `BUILD SUCCESS` y genera el JAR ejecutable:
+
+![Build exitoso](src/main/resources/webroot/images/buildSuccess.png)
+
 ### Local: `/shutdown` detiene el servidor
 
 Respuesta en el navegador y registro del servidor con "Servidor detenido.":
@@ -265,10 +310,8 @@ Respuesta en el navegador y registro del servidor con "Servidor detenido.":
 
 En el registro se ve también "Read timed out": es una conexión abierta por el navegador sin enviar nada, que el servidor descartó a los 5 segundos sin caerse.
 
-### Pendientes de captura
+### Pendiente de captura
 
-- **PENDIENTE:** `/shutdown` devolviendo 404 con `APP_ENV=production` en local.
-- **PENDIENTE:** salida de `mvn clean package` con `BUILD SUCCESS`.
 - **PENDIENTE (nube):** página desplegada, un recurso estático, dos respuestas REST, las variables configuradas sin secretos y `/shutdown` con 404.
 
 ## Pruebas realizadas
@@ -294,6 +337,9 @@ Todas con el servidor corriendo y la herramienta `curl`.
 | `POST /hello` | 400 | Correcto |
 | Línea de petición mal formada (`HOLA MUNDO`, sin versión, versión inválida, path sin `/`) | 400 | Correcto |
 | Conexión que no envía datos | Se descarta a los 5 s y se atiende la siguiente | Correcto |
+| Página en el navegador, botón Pedir saludo | Muestra `Hola Mariana ñaña` con `fetch()` a `/hello` | Correcto |
+| Página en el navegador, botón Pedir pi | Muestra el valor de pi | Correcto |
+| Página en el navegador, botón Ver configuración | Muestra `APP_ENV` y `GREETING_PREFIX` | Correcto |
 | `GET /shutdown` con `APP_ENV=development` | 200 y el servidor se detiene | Correcto |
 | `GET /shutdown` con `APP_ENV=production` | 404 y el servidor sigue vivo | Correcto |
 | Sin variables de entorno | Puerto 8080, `Hello`, `development` | Correcto |

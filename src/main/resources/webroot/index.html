@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Servidor HTTP secuencial</title>
+    <title>Mini framework web en Java</title>
     <link rel="stylesheet" href="/styles.css">
 </head>
 <body>
@@ -11,36 +11,29 @@
 <header>
     <img src="/images/logoU.png" alt="Logo de la Escuela Colombiana de Ingeniería"
          width="72" height="72">
-    <h1>Servidor HTTP secuencial</h1>
-    <p>Un solo proceso Java atiende una conexión a la vez.</p>
+    <h1>Mini framework web en Java</h1>
+    <p>Un servidor secuencial donde cada servicio es una lambda registrada con get().</p>
 </header>
 
 <main>
     <section>
         <h2>Saludo</h2>
+        <p>Llama a <code>/hello?name=...</code></p>
         <label for="nombre">Nombre</label>
         <input type="text" id="nombre" value="Mariana" autocomplete="off">
         <button id="btn-saludo">Pedir saludo</button>
     </section>
 
     <section>
-        <h2>Cuadrado</h2>
-        <label for="numero">Número</label>
-        <input type="text" id="numero" value="7" inputmode="decimal">
-        <button id="btn-cuadrado">Calcular cuadrado</button>
+        <h2>Número pi</h2>
+        <p>Llama a <code>/pi</code></p>
+        <button id="btn-pi">Pedir pi</button>
     </section>
 
     <section>
-        <h2>Hora del servidor</h2>
-        <p>El valor viene del servidor, no del reloj del navegador.</p>
-        <button id="btn-hora">Consultar hora</button>
-    </section>
-
-    <section>
-        <h2>Petición lenta</h2>
-        <p>Ejecútala en una ventana y pide otro servicio en una segunda ventana:
-           la segunda queda esperando.</p>
-        <button id="btn-lento">Esperar 5 segundos</button>
+        <h2>Configuración del servidor</h2>
+        <p>Llama a <code>/config</code> y muestra las variables de entorno que leyó el servidor.</p>
+        <button id="btn-config">Ver configuración</button>
     </section>
 </main>
 

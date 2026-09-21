@@ -32,7 +32,6 @@ input {
 
 button {
     padding: 0.4rem 0.9rem;
-    background: #d striking;
     background: #c96a8a;
     color: white;
     border: none;
@@ -55,6 +54,10 @@ button:disabled {
     border-left: 4px solid #c96a8a;
 }
 
+#resultado-texto {
+    white-space: pre-line;
+}
+
 #error {
     border-left-color: #c0392b;
     color: #c0392b;
@@ -63,6 +66,11 @@ button:disabled {
 img {
     max-width: 100%;
     height: auto;
+}
+
+code {
+    background: #f6e7ed;
+    padding: 0.1rem 0.3rem;
 }
 
 figcaption {

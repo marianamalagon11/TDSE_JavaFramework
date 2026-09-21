@@ -14,6 +14,8 @@ function mostrarResultado(texto) {
 function mostrarError(texto) {
     errorTexto.textContent = texto;
     cajaError.hidden = false;
+    // si no, se queda el "Esperando..." de cuando empezo la peticion
+    resultadoTexto.textContent = "Sin resultado.";
 }
 
 // Bloqueo los botones mientras espero para que se note el estado de carga
@@ -26,7 +28,7 @@ function cargando(activo) {
     }
 }
 
-// Pide un servicio y devuelve el JSON ya parseado, o null si algo fallo.
+// Pide un servicio y devuelve el texto de la respuesta, o null si algo fallo.
 // Separo tres casos: falla de red, respuesta HTTP de error, y respuesta buena.
 async function pedirServicio(url) {
     cargando(true);
@@ -40,22 +42,14 @@ async function pedirServicio(url) {
             return null;
         }
 
-        // Aca si hubo respuesta, pero puede ser 400, 404, 405...
+        // Aca si hubo respuesta, pero puede ser 400, 404, 500...
         if (!respuesta.ok) {
-            let mensaje = "El servidor respondio con estado " + respuesta.status + ".";
-            try {
-                const cuerpo = await respuesta.json();
-                if (cuerpo && cuerpo.error) {
-                    mensaje = cuerpo.error;
-                }
-            } catch (noEsJson) {
-                // El cuerpo no era JSON, me quedo con el mensaje generico
-            }
-            mostrarError(mensaje);
+            mostrarError("El servidor respondio con estado " + respuesta.status + ".");
             return null;
         }
 
-        return await respuesta.json();
+        // Las lambdas del servidor devuelven texto, no JSON
+        return await respuesta.text();
     } finally {
         // Pase lo que pase, vuelvo a habilitar los botones
         cargando(false);
@@ -69,37 +63,24 @@ document.getElementById("btn-saludo").addEventListener("click", async (evento) =
         mostrarError("Escribe un nombre antes de pedir el saludo.");
         return;
     }
-    const datos = await pedirServicio("/app/hello?name=" + encodeURIComponent(nombre));
-    if (datos) {
-        mostrarResultado(datos.greeting);
+    const mensaje = await pedirServicio("/hello?name=" + encodeURIComponent(nombre));
+    if (mensaje !== null) {
+        mostrarResultado(mensaje);
     }
 });
 
-document.getElementById("btn-cuadrado").addEventListener("click", async (evento) => {
+document.getElementById("btn-pi").addEventListener("click", async (evento) => {
     evento.preventDefault();
-    const numero = document.getElementById("numero").value.trim();
-    if (numero === "") {
-        mostrarError("Escribe un numero antes de calcular el cuadrado.");
-        return;
-    }
-    const datos = await pedirServicio("/app/square?n=" + encodeURIComponent(numero));
-    if (datos) {
-        mostrarResultado("El cuadrado de " + datos.input + " es " + datos.square + ".");
+    const pi = await pedirServicio("/pi");
+    if (pi !== null) {
+        mostrarResultado("Pi según el servidor: " + pi);
     }
 });
 
-document.getElementById("btn-hora").addEventListener("click", async (evento) => {
+document.getElementById("btn-config").addEventListener("click", async (evento) => {
     evento.preventDefault();
-    const datos = await pedirServicio("/app/time");
-    if (datos) {
-        mostrarResultado("Hora del servidor: " + datos.serverTime);
-    }
-});
-
-document.getElementById("btn-lento").addEventListener("click", async (evento) => {
-    evento.preventDefault();
-    const datos = await pedirServicio("/app/slow?seconds=5");
-    if (datos) {
-        mostrarResultado("La peticion lenta termino a las " + datos.finishedAt + ".");
+    const config = await pedirServicio("/config");
+    if (config !== null) {
+        mostrarResultado(config);
     }
 });
