@@ -32,6 +32,15 @@ public class Application {
             return "APP_ENV=" + appEnv + "\nGREETING_PREFIX=" + greetingPrefix;
         });
 
+        // solo en desarrollo, en la nube nadie debe poder apagar el servidor
+        if (appEnv.equals("development")) {
+            get("/shutdown", (req, resp) -> {
+                stop();
+                resp.setContentType("text/plain; charset=utf-8");
+                return "Server will stop after this response.";
+            });
+        }
+
         start();
     }
 }
