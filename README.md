@@ -2,8 +2,6 @@
 
 Servidor HTTP secuencial escrito en Java, sin librerías externas, que evoluciona el servidor de la primera parte del laboratorio ([TDSE_HttpServer](https://github.com/marianamalagon11/TDSE_HttpServer)) hacia un pequeño framework web. El desarrollador registra servicios GET con funciones lambda, sin tocar el ciclo de conexión del servidor, y la configuración del despliegue sale de variables de entorno.
 
-> Estado del README: completo hasta la aplicación de ejemplo (punto 8). Las secciones marcadas como **PENDIENTE** dependen del despliegue en la nube.
-
 ## Qué hace
 
 - Sirve archivos estáticos (HTML, CSS, JavaScript e imágenes) desde `src/main/resources/webroot`.
@@ -135,16 +133,25 @@ src/main/resources/webroot/
 ├── app.js
 ├── styles.css
 └── images/
+
+Dockerfile
+pom.xml
 ```
 
 ## Compilar y ejecutar en local
 
 Requisitos: Java 21 y Maven 3.9 o superior.
 
-Compilar y empaquetar:
+Compilar, ejecutar las pruebas y empaquetar:
 
 ```bash
 mvn clean package
+```
+
+Solo las pruebas:
+
+```bash
+mvn test
 ```
 
 Ejecutar con Maven (PowerShell):
@@ -164,6 +171,15 @@ Ejecutar el JAR generado:
 ```bash
 PORT=8085 java -jar target/httpServer2-1.0-SNAPSHOT.jar
 ```
+
+Ejecutar con Docker:
+
+```bash
+docker build -t webframework .
+docker run --rm -p 8080:8080 -e PORT=8080 -e GREETING_PREFIX=Hola webframework
+```
+
+La imagen trae `APP_ENV=production` por defecto, así que en ese contenedor `/shutdown` no existe. Para probar el apagado en Docker hay que pasar `-e APP_ENV=development`.
 
 Si no se define ninguna variable, el servidor usa el puerto 8080, el prefijo `Hello` y el ambiente `development`. Luego abre `http://localhost:8085`.
 
@@ -251,12 +267,84 @@ La función `pedirServicio` usa `fetch()`, distingue entre falla de red, respues
 
 ## Despliegue en la nube
 
-**PENDIENTE (punto 9).**
+- **Plataforma:** Amazon Web Services (AWS), con el laboratorio AWS Academy Learner Lab.
+- **Servicio:** EC2, región Norte de Virginia (`us-east-1`), instancia `t3.small` con Amazon Linux 2023.
+- **Empaquetado:** contenedor Docker construido a partir del `Dockerfile` del repositorio, con el mismo código de la rama `main`.
+- **URL pública:** http://3.238.242.51:8080
 
-- Plataforma utilizada: por definir.
-- URL pública: por definir.
-- Pasos para reproducir el despliegue: por definir.
-- Variables configuradas en la nube: `PORT` (la asigna la plataforma), `APP_ENV=production` y `GREETING_PREFIX`.
+Esta IP pública la asigna AWS automáticamente. Si la instancia se detiene y se vuelve a iniciar, la IP cambia. Las evidencias de más abajo muestran el despliegue funcionando con esa URL.
+
+### Ejemplos en la nube
+
+| Tipo | URL |
+|---|---|
+| Página de ejemplo | http://3.238.242.51:8080/ |
+| Servicio REST | http://3.238.242.51:8080/hello?name=Mariana |
+| Servicio REST | http://3.238.242.51:8080/pi |
+| Configuración | http://3.238.242.51:8080/config |
+| Estático | http://3.238.242.51:8080/styles.css |
+| Estático | http://3.238.242.51:8080/images/logoU.png |
+| `/shutdown` (no existe en producción) | http://3.238.242.51:8080/shutdown |
+
+### Variables de entorno en la nube
+
+| Variable | Valor en la nube | Cómo se define |
+|---|---|---|
+| `PORT` | `8080` | Con `-e PORT=8080` al ejecutar el contenedor. EC2 no asigna un puerto por su cuenta, así que se define aquí y la aplicación lo lee del entorno. |
+| `APP_ENV` | `production` | Con `-e APP_ENV=production`. Desactiva la ruta `/shutdown`. |
+| `GREETING_PREFIX` | `Hola` | Con `-e GREETING_PREFIX=Hola`. |
+
+Ninguna de estas variables es un secreto, y no hay credenciales en el repositorio.
+
+### Cómo reproducir el despliegue
+
+1. **Iniciar el laboratorio.** En AWS Academy, abrir "Launch AWS Academy Learner Lab", pulsar Start Lab y esperar el indicador verde. Luego abrir la consola de AWS.
+2. **Crear la instancia EC2.** Amazon Linux 2023, tipo `t3.small`, un par de claves existente o uno nuevo y su archivo `.pem` descargado, y el grupo de seguridad con estas reglas de entrada:
+
+   | Tipo | Puerto | Origen |
+   |---|---|---|
+   | SSH | 22 | Mi IP |
+   | TCP personalizado | 8080 | Cualquier lugar (`0.0.0.0/0`) |
+
+3. **Conectarse por SSH** con la IP pública de la instancia:
+
+   ```bash
+   ssh -i <archivo>.pem ec2-user@<IP_PUBLICA>
+   ```
+
+4. **Instalar Docker y git** en la instancia:
+
+   ```bash
+   sudo dnf install -y docker git
+   sudo systemctl enable --now docker
+   ```
+
+5. **Clonar el repositorio y construir la imagen:**
+
+   ```bash
+   git clone https://github.com/marianamalagon11/TDSE_JavaFramework.git
+   cd TDSE_JavaFramework
+   sudo docker build -t webframework .
+   ```
+
+6. **Ejecutar el contenedor** con las variables de entorno:
+
+   ```bash
+   sudo docker run -d --name webframework --restart unless-stopped \
+     -p 8080:8080 \
+     -e PORT=8080 -e APP_ENV=production -e GREETING_PREFIX=Hola \
+     webframework
+   ```
+
+7. **Verificar.** Primero desde dentro de la instancia con `curl localhost:8080/pi` y luego desde el navegador con `http://<IP_PUBLICA>:8080`.
+
+Para actualizar después de un cambio: `git pull`, `sudo docker build -t webframework .`, `sudo docker rm -f webframework` y volver a ejecutar el `docker run` del paso 6. Para detener la aplicación basta con `sudo docker stop webframework`.
+
+### Seguridad del despliegue
+
+- El grupo de seguridad solo expone el puerto 8080 al público. El puerto 22 de SSH acepta únicamente la IP del administrador.
+- Con `APP_ENV=production` la ruta `/shutdown` no se registra: responde 404 y nadie puede apagar el servidor desde internet.
+- El contenedor se reinicia solo si la instancia se reinicia.
 
 ## Evidencias
 
@@ -310,9 +398,43 @@ Respuesta en el navegador y registro del servidor con "Servidor detenido.":
 
 En el registro se ve también "Read timed out": es una conexión abierta por el navegador sin enviar nada, que el servidor descartó a los 5 segundos sin caerse.
 
-### Pendiente de captura
+### Nube: instancia en AWS
 
-- **PENDIENTE (nube):** página desplegada, un recurso estático, dos respuestas REST, las variables configuradas sin secretos y `/shutdown` con 404.
+Instancia EC2 `webframework-lab` en ejecución, tipo `t3.small`, con su IP pública:
+
+![Instancia EC2 en ejecución](src/main/resources/webroot/images/pruebaAws.png)
+
+### Nube: página desplegada y servicio de saludo
+
+La página se carga desde la URL pública de AWS. El botón Pedir saludo llama a `/hello` con `fetch()`. Que la página se vea con estilos, JavaScript y las dos imágenes es también evidencia de que los recursos estáticos se sirven bien:
+
+![Página desplegada con el saludo](src/main/resources/webroot/images/pruebaSaludoCloud.png)
+
+### Nube: segundo servicio REST
+
+El botón Pedir pi llama a `/pi`:
+
+![Servicio pi en la nube](src/main/resources/webroot/images/pruebaPiCloud.png)
+
+### Nube: variables de entorno
+
+El botón Ver configuración llama a `/config` y muestra `APP_ENV=production` y `GREETING_PREFIX=Hola`, es decir, las variables con las que se ejecutó el contenedor, sin exponer ningún secreto:
+
+![Variables de entorno en la nube](src/main/resources/webroot/images/pruebaConfigCloud.png)
+
+### Nube: recurso inexistente
+
+Una ruta que no existe responde 404:
+
+![404 en la nube](src/main/resources/webroot/images/pruebaUnknownCloud.png)
+
+### Nube: `/shutdown` no está disponible en producción
+
+`/shutdown` responde 404 en la URL pública y, después de pedirlo, la página sigue funcionando, así que el servidor no se apagó:
+
+![Shutdown en la nube](src/main/resources/webroot/images/pruebaShutdownCloud.png)
+
+![El servidor sigue activo después de pedir shutdown](src/main/resources/webroot/images/despuesShutdownCloud.png)
 
 ## Pruebas realizadas
 
@@ -346,7 +468,44 @@ Todas con el servidor corriendo y la herramienta `curl`.
 | `PORT=abc` | El programa termina con "PORT no es un numero valido" | Correcto |
 | JAR ejecutado con `java -jar` | Sirve rutas, estáticos e imágenes | Correcto |
 
-Aún no hay pruebas automatizadas con JUnit.
+### Pruebas en la nube
+
+Hechas con `curl` contra la URL pública `http://3.238.242.51:8080`, con `APP_ENV=production` y `GREETING_PREFIX=Hola`:
+
+| Prueba | Resultado |
+|---|---|
+| `GET /hello?name=Mariana` | 200, `Hola Mariana` |
+| `GET /pi` | 200, `3.141592653589793` |
+| `GET /config` | 200, `APP_ENV=production` y `GREETING_PREFIX=Hola` |
+| `GET /` | 200, `text/html` |
+| `GET /styles.css` | 200, `text/css` |
+| `GET /app.js` | 200, `application/javascript` |
+| `GET /images/logoU.png` | 200, `image/png`, 118284 bytes |
+| `GET /images/fotoU.jpeg` | 200, `image/jpeg`, 38578 bytes |
+| `GET /unknown` | 404 |
+| `GET /shutdown` | 404, y el servidor sigue respondiendo |
+
+### Pruebas automatizadas (JUnit)
+
+Se ejecutan con `mvn test`, y también corren dentro de `mvn clean package`. Están en `src/test/java`.
+
+| Clase | Qué comprueba | Pruebas |
+|---|---|---|
+| `RouterTest` | Una ruta registrada se encuentra y se ejecuta; una ruta no registrada devuelve nada | 2 |
+| `RequestTest` | Lectura de varios parámetros, parámetro ausente como `null`, valores por defecto de `Response` | 3 |
+| `StaticFileServiceTest` | Tipos de contenido, `/` como `index.html`, imagen intacta byte a byte, archivo inexistente, carpeta y rutas con `..` rechazadas | 7 |
+| `ServidorTest` | Levanta el servidor real en un puerto libre y lo prueba por HTTP: rutas dinámicas con varios parámetros y parámetro faltante, decodificación, estáticos, imagen binaria, 404, peticiones mal formadas con 400, excepción en una lambda con 500, cliente que no envía nada y apagado gradual | 11 |
+
+Resultado:
+
+```
+Tests run: 23, Failures: 0, Errors: 0, Skipped: 0
+BUILD SUCCESS
+```
+
+![Resultado de mvn test](src/main/resources/webroot/images/tests.png)
+
+`ServidorTest` tarda unos 6 segundos porque incluye la prueba del cliente que no envía datos, que el servidor descarta a los 5 segundos. El apagado gradual se prueba con una ruta propia de la prueba que llama a `stop()`: la respuesta llega completa, el hilo del servidor termina y el puerto queda cerrado.
 
 ## Por qué esta arquitectura es mantenible
 
@@ -357,6 +516,7 @@ Aún no hay pruebas automatizadas con JUnit.
 - **Configuración externa:** el puerto, el ambiente y el saludo cambian sin recompilar, y el mismo artefacto corre en local y en la nube.
 - **Seguridad por ambiente:** la ruta de apagado solo existe en desarrollo.
 - **Extensibilidad:** la interfaz `WebService` permite registrar cualquier comportamiento como función.
+- **Testabilidad:** el router, la petición, el servicio de archivos estáticos y el servidor completo se prueban por separado con JUnit, sin depender de la aplicación de ejemplo.
 - **Robustez:** los errores de una petición no afectan a las demás.
 
 ## Alcance y limitaciones
